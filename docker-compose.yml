@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  weak-app:
+    build:
+      context: ./WeakApp
+      dockerfile: Dockerfile
+    networks:
+      - app_network
+    container_name: weak-app
+    ports:
+      - "8080:8080"
+
+  data-ingestor-service:
+    build:
+      context: ./DataIngestorService
+      dockerfile: DataIngestorService/Dockerfile
+    container_name: data-ingestor-service
+    networks:
+      - app_network
+    ports:
+      - "8081:8080"
+    depends_on:
+      weak-app:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+  data-processor-service:
+    build:
+      context: ./DataProcessorService
+      dockerfile: DataProcessorService/Dockerfile
+    container_name: data-processor-service
+    networks:
+      - app_network
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    networks:
+      - app_network
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  postgres:
+    image: postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    networks:
+      - app_network
+    environment:
+      POSTGRES_PASSWORD: 1111
+
+  adminer:
+    image: adminer
+    restart: always
+    networks:
+      - app_network
+    ports:
+      - 5050:8080
+
+  graphql-gateway:
+    build:
+      context: ./GraphqlGateway
+      dockerfile: GraphqlGateway/Dockerfile
+    container_name: graphql-gateway
+    networks:
+      - app_network
+    environment:
+      - ASPNETCORE_HTTP_PORTS=6060
+    ports:
+      - "6062:6060"
+    depends_on:
+      postgres:
+        condition: service_started
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - app_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - app_network
+    depends_on:
+      - prometheus
+
+networks:
+  app_network:
+    driver: bridge
+
