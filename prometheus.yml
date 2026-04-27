@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 5s # Как часто забирать метрики
+
+scrape_configs:
+  - job_name: 'graphql-gateway'
+    static_configs:
+      - targets: ['graphql-gateway:6060'] # Имя сервиса и его порт внутри сети Docker
+
+  # - job_name: 'data-processor'
+  #   metrics_path: '/metrics'
+  #   static_configs:
+  #     - targets: ['data-processor:8080']
