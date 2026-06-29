@@ -1,13 +1,15 @@
 ﻿using DataIngestorService.APIs;
 using DataIngestorService.Contracts.Contracts;
+using DataIngestorService.Logging;
 using DataIngestorService.MessagingService.Interfaces;
 using Refit;
 
 namespace DataIngestorService.BackgroundServices;
 
 public class SensorDataFetcherService(
-    IWeakAppApi weakAppApi, 
-    IMessageProducerService messageProducerService, 
+    IWeakAppApi weakAppApi,
+    IMessageProducerService messageProducerService,
+    ILoggingContextAccessor loggingContext,
     ILogger<SensorDataFetcherService> logger) : BackgroundService
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(15);
@@ -35,7 +37,10 @@ public class SensorDataFetcherService(
 
     private async Task RunIterationAsync(CancellationToken cancellationToken)
     {
+        using var scope = loggingContext.BeginScope();
+
         var events = await FetchSensorEventsAsync(cancellationToken);
+        loggingContext.SetEventCount(events.Count);
 
         if (events.Count == 0)
             return;
@@ -48,7 +53,7 @@ public class SensorDataFetcherService(
 
         await messageProducerService.PublishSensorData(message, cancellationToken);
 
-        logger.LogInformation("Published {EventCount} sensor event(s)", events.Count);
+        logger.LogInformation("Published sensor events");
     }
 
     private async Task<List<SensorEvent>> FetchSensorEventsAsync(CancellationToken cancellationToken)
