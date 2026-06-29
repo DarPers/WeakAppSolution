@@ -5,15 +5,17 @@ namespace DataIngestorService.RetryPolicies;
 
 public static class RetryPoliciesExtentions
 {
-    public static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+    public static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy(
+        Func<int, TimeSpan>? sleepDurationProvider = null)
     {
         return HttpPolicyExtensions
             .HandleTransientHttpError()
             .WaitAndRetryAsync(
                 5,
                 retryAttempt =>
-                    TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
-                    + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 200))
+                    sleepDurationProvider?.Invoke(retryAttempt)
+                    ?? TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
+                        + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 200))
             );
     }
 
