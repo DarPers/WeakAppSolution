@@ -2,13 +2,17 @@ using DataIngestorService.APIs;
 using DataIngestorService.APIs.DelegatingHandlers;
 using DataIngestorService.BackgroundServices;
 using DataIngestorService.ConfigurationOptions;
+using DataIngestorService.Logging;
 using DataIngestorService.MessagingService;
 using DataIngestorService.RetryPolicies;
 using Microsoft.Extensions.Options;
 using Refit;
+using Serilog;
 using Host = Microsoft.Extensions.Hosting.Host;
 
 var builder = Host.CreateApplicationBuilder(args);
+
+builder.AddStructuredSerilogLogging();
 
 builder.Services.AddHostedService<SensorDataFetcherService>();
 
@@ -19,11 +23,6 @@ builder.Services
     .Bind(configuration.GetSection(WeakAppOptions.SectionName))
     .ValidateDataAnnotations()
     .ValidateOnStart();
-
-builder.Services.AddLogging(logging =>
-{
-    logging.AddConsole(); 
-});
 
 builder.Services.AddTransient<WeakApiAuthHandler>();
 
@@ -45,4 +44,12 @@ builder.Services
 builder.Services.AddMessageServices(configuration);
 
 var app = builder.Build();
-app.Run();
+
+try
+{
+    app.Run();
+}
+finally
+{
+    Log.CloseAndFlush();
+}
