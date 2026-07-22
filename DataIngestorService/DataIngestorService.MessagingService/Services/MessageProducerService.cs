@@ -16,6 +16,7 @@ public class MessageProducerService(
     public Task PublishSensorData(SensorEventsMessage sensorEventMessage, CancellationToken cancellationToken)
     {
         var opts = options.Value;
+
         var delay = TimeSpan.FromMilliseconds(opts.PublishRetryDelayMilliseconds);
 
         var policy = RabbitMqPublishRetryPolicies.GetRabbitMqPublishRetryPolicy(
