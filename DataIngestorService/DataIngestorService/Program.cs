@@ -35,7 +35,7 @@ builder.Services
     })
     .AddHttpMessageHandler<WeakApiAuthHandler>()
     .AddPolicyHandler(RetryPoliciesExtentions.GetRetryPolicy())
-    .AddPolicyHandler((sp, request) => 
+    .AddPolicyHandler((sp, request) =>
     {
         var logger = sp.GetRequiredService<ILogger<WeakApiAuthHandler>>();
         return RetryPoliciesExtentions.GetCircuitBreakerPolicy(logger);
