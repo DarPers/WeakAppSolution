@@ -85,4 +85,4 @@ jobs:
           push: false
           tags: ${{ inputs.image-name }}:ci-${{ github.sha }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=min
