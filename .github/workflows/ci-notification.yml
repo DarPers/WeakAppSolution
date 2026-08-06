@@ -1,0 +1,26 @@
+name: CI — Notification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "NotificationService/**"
+      - ".github/workflows/ci-notification.yml"
+      - ".github/workflows/reusable-dotnet-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-notification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  notification:
+    uses: ./.github/workflows/reusable-dotnet-ci.yml
+    with:
+      # Expected layout (same pattern as other .NET services):
+      # NotificationService/NotificationService/{*.csproj, Dockerfile}
+      working-directory: NotificationService
+      project-file: NotificationService/NotificationService.csproj
+      dockerfile: NotificationService/Dockerfile
+      image-name: notification-service
+      dotnet-version: "10.0.x"
