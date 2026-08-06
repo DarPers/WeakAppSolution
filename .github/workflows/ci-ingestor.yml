@@ -3,6 +3,7 @@ name: CI — Data Ingestor
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "DataIngestorService/**"
       - ".github/workflows/ci-ingestor.yml"
@@ -13,13 +14,20 @@ concurrency:
   group: ci-ingestor-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  checks: write
+  statuses: write
+  packages: read
+
 jobs:
   ingestor:
     uses: ./.github/workflows/reusable-dotnet-ci.yml
+    secrets: inherit
     with:
       working-directory: DataIngestorService
       project-file: DataIngestorService/DataIngestorService.csproj
       test-project: DataIngestorService.Tests/DataIngestorService.Tests.csproj
-      dockerfile: DataIngestorService/Dockerfile
+      dockerfile: DataIngestorService/DataIngestorService/Dockerfile
       image-name: data-ingestor-service
       dotnet-version: "10.0.x"

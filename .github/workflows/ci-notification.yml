@@ -3,22 +3,35 @@ name: CI — Notification
 on:
   pull_request:
     branches: [main]
-    paths:
-      - "NotificationService/**"
-      - ".github/workflows/ci-notification.yml"
-      - ".github/workflows/reusable-dotnet-ci.yml"
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 concurrency:
   group: ci-notification-${{ github.ref }}
-  cancel-in-progress: true 
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+  statuses: write
+  packages: read
 
 jobs:
+  # Inline job so a check always appears on the PR (isolates reusable-workflow issues)
+  ping:
+    name: CI triggered
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Notification CI triggered for ${{ github.sha }}"
+
   notification:
+    needs: ping
     uses: ./.github/workflows/reusable-dotnet-ci.yml
+    secrets: inherit
     with:
       working-directory: NotificationService
       project-file: NotificationService/NotificationService.csproj
-      dockerfile: NotificationService/Dockerfile
+      test-project: NotificationService.Tests/NotificationService.Tests.csproj
+      dockerfile: NotificationService/NotificationService/Dockerfile
       image-name: notification-service
       dotnet-version: "10.0.x"
