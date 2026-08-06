@@ -3,6 +3,7 @@ name: CI — Notification
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "NotificationService/**"
       - ".github/workflows/ci-notification.yml"
@@ -11,14 +12,22 @@ on:
 
 concurrency:
   group: ci-notification-${{ github.ref }}
-  cancel-in-progress: true 
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+  statuses: write
+  packages: read
 
 jobs:
   notification:
     uses: ./.github/workflows/reusable-dotnet-ci.yml
+    secrets: inherit
     with:
       working-directory: NotificationService
       project-file: NotificationService/NotificationService.csproj
-      dockerfile: NotificationService/Dockerfile
+      test-project: NotificationService.Tests/NotificationService.Tests.csproj
+      dockerfile: NotificationService/NotificationService/Dockerfile
       image-name: notification-service
       dotnet-version: "10.0.x"
