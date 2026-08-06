@@ -65,6 +65,7 @@ public class SensorMessageConsumerTests
     [Fact]
     public async Task Consume_WhenBroadcastFails_Rethrows()
     {
+        // Arrange
         var message = new SensorEventsMessage
         {
             ReceivedAt = DateTime.UtcNow,
@@ -75,8 +76,10 @@ public class SensorMessageConsumerTests
             .Setup(x => x.SensorDataUpdated(It.IsAny<SensorNotificationDto>()))
             .ThrowsAsync(new HubException("broadcast failed"));
 
+        // Act
         var act = async () => await _sut.Consume(context.Object);
 
+        // Assert
         await act.Should().ThrowAsync<HubException>().WithMessage("broadcast failed");
     }
 
