@@ -1,10 +1,8 @@
-version: '3.8'
-
 services:
   weak-app:
     build:
-      context: ./WeakApp
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: WeakApp/Dockerfile
     networks:
       - app_network
     container_name: weak-app
@@ -13,8 +11,8 @@ services:
 
   data-ingestor-service:
     build:
-      context: ./DataIngestorService
-      dockerfile: DataIngestorService/Dockerfile
+      context: .
+      dockerfile: DataIngestorService/DataIngestorService/Dockerfile
     container_name: data-ingestor-service
     networks:
       - app_network
@@ -28,8 +26,10 @@ services:
 
   data-processor-service:
     build:
-      context: ./DataProcessorService
-      dockerfile: DataProcessorService/Dockerfile
+      context: .
+      args:
+        - GITHUB_TOKEN=${NUGET_TOKEN}
+      dockerfile: DataProcessorService/DataProcessorService/Dockerfile
     container_name: data-processor-service
     networks:
       - app_network
@@ -74,8 +74,8 @@ services:
 
   graphql-gateway:
     build:
-      context: ./GraphqlGateway
-      dockerfile: GraphqlGateway/Dockerfile
+      context: .
+      dockerfile: GraphqlGateway/GraphqlGateway/Dockerfile
     container_name: graphql-gateway
     networks:
       - app_network
@@ -86,6 +86,23 @@ services:
     depends_on:
       postgres:
         condition: service_started
+
+  notification-service:
+    build:
+      context: .
+      args:
+        - GITHUB_TOKEN=${NUGET_TOKEN}
+      dockerfile: NotificationService/NotificationService/Dockerfile
+    container_name: notification-service
+    networks:
+      - app_network
+    environment:
+      - ASPNETCORE_HTTP_PORTS=2020
+    ports:
+      - "2000:2020"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
   prometheus:
     image: prom/prometheus:latest
