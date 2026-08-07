@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       working-directory:
-        description: Service directory for dotnet CLI (cwd)
+        description: Root directory of the service (Docker build context)
         required: true
         type: string
       project-file:
@@ -17,7 +17,7 @@ on:
         type: string
         default: ""
       dockerfile:
-        description: Dockerfile path from repository root
+        description: Relative path to Dockerfile (from working-directory)
         required: true
         type: string
       image-name:
@@ -30,12 +30,6 @@ on:
         type: string
         default: "10.0.x"
 
-permissions:
-  contents: read
-  checks: write
-  statuses: write
-  packages: read
-
 jobs:
   ci:
     name: Restore → Build → Test → Lint → Docker
@@ -43,8 +37,6 @@ jobs:
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
-    env:
-      GITHUB_TOKEN: ${{ secrets.NUGET_TOKEN }}
 
     steps:
       - name: Checkout
@@ -88,11 +80,9 @@ jobs:
       - name: Docker build
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ${{ inputs.dockerfile }}
+          context: ${{ inputs.working-directory }}
+          file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
           push: false
           tags: ${{ inputs.image-name }}:ci-${{ github.sha }}
-          build-args: |
-            GITHUB_TOKEN=${{ secrets.NUGET_TOKEN }}
           cache-from: type=gha
           cache-to: type=gha,mode=min
