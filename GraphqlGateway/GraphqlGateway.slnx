@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="GraphqlGateway/GraphqlGateway.csproj" />
+  <Project Path="GraphqlGateway.Tests/GraphqlGateway.Tests.csproj" />
 </Solution>

@@ -83,6 +83,7 @@ services:
     networks:
       - app_network
     environment:
+      - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=6060
     ports:
       - "6062:6060"
