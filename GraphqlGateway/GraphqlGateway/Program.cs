@@ -1,8 +1,13 @@
 using GraphqlGateway.Data;
+using GraphqlGateway.Logging;
+using HotChocolate.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Metrics;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddStructuredSerilogLogging();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -25,10 +30,20 @@ builder.Services.AddOpenTelemetry()
         .AddRuntimeInstrumentation()
         .AddPrometheusExporter());
 
-var app = builder.Build();
+try
+{
+    var app = builder.Build();
 
-app.MapPrometheusScrapingEndpoint();
+    app.MapPrometheusScrapingEndpoint();
 
-app.MapGraphQL();
+    app.MapGraphQL().WithOptions(new GraphQLServerOptions
+    {
+        Tool = { Enable = app.Environment.IsDevelopment() }
+    });
 
-app.Run();
+    app.Run();
+}
+finally
+{
+    Log.CloseAndFlush();
+}
