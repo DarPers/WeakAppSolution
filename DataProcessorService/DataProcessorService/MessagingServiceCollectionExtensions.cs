@@ -9,7 +9,9 @@ namespace DataProcessorService;
 
 public static class MessagingServiceCollectionExtensions
 {
-    public static IServiceCollection ConfigureServices(this IServiceCollection serviceCollection, IConfiguration configuration)
+    public static IServiceCollection ConfigureMessagingServices(
+        this IServiceCollection serviceCollection,
+        IConfiguration configuration)
     {
         serviceCollection
             .AddOptions<RabbitMqOptions>()
@@ -33,6 +35,11 @@ public static class MessagingServiceCollectionExtensions
 
                 connectionSettings.ReceiveEndpoint(options.QueueName, ep =>
                 {
+                    // After retries are exhausted, MassTransit moves the message to {queue}_error.
+                    ep.UseMessageRetry(r => r.Interval(
+                        options.ConsumeRetryCount,
+                        TimeSpan.FromMilliseconds(options.ConsumeRetryDelayMilliseconds)));
+
                     ep.ConfigureConsumer<SensorMessageConsumer>(context);
                 });
             });

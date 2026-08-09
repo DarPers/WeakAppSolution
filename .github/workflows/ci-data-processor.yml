@@ -1,0 +1,40 @@
+name: CI — Data Processor
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "DataProcessorService/**"
+      - "nuget.config"
+      - ".github/workflows/ci-data-processor.yml"
+      - ".github/workflows/reusable-dotnet-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "DataProcessorService/**"
+      - "nuget.config"
+      - ".github/workflows/ci-data-processor.yml"
+      - ".github/workflows/reusable-dotnet-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-data-processor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  data-processor:
+    uses: ./.github/workflows/reusable-dotnet-ci.yml
+    with:
+      working-directory: DataProcessorService
+      project-file: DataProcessorService/DataProcessorService.csproj
+      test-project: DataProcessorService.Tests/DataProcessorService.Tests.csproj
+      dockerfile: DataProcessorService/DataProcessorService/Dockerfile
+      image-name: data-processor-service
+      dotnet-version: "10.0.x"
+      needs-nuget-auth: true
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
+      SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+      NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
