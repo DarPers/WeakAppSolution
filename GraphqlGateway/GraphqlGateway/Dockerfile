@@ -12,10 +12,10 @@ EXPOSE 6061
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["GraphqlGateway/GraphqlGateway.csproj", "GraphqlGateway/"]
-RUN dotnet restore "./GraphqlGateway/GraphqlGateway.csproj"
+COPY ["GraphqlGateway/GraphqlGateway/GraphqlGateway.csproj", "GraphqlGateway/GraphqlGateway/"]
+RUN dotnet restore "./GraphqlGateway/GraphqlGateway/GraphqlGateway.csproj"
 COPY . .
-WORKDIR "/src/GraphqlGateway"
+WORKDIR "/src/GraphqlGateway/GraphqlGateway"
 RUN dotnet build "./GraphqlGateway.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
