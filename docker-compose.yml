@@ -33,6 +33,9 @@ services:
     container_name: data-processor-service
     networks:
       - app_network
+    environment:
+      RabbitMQ__Password: guest
+      ConnectionStrings__PostgresSQLConnectionString: Host=postgres;Port=5432;Database=WeakAppSolutionDb;Username=postgres;Password=1111
     depends_on:
       rabbitmq:
         condition: service_healthy
