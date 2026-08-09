@@ -1,37 +1,34 @@
-name: CI — Notification
+name: CI — Data Ingestor
 
 on:
   push:
     branches: [main]
     paths:
-      - "NotificationService/**"
-      - "nuget.config"
-      - ".github/workflows/ci-notification.yml"
+      - "DataIngestorService/**"
+      - ".github/workflows/ci-data-ingestor.yml"
       - ".github/workflows/reusable-dotnet-ci.yml"
   pull_request:
     branches: [main]
     paths:
-      - "NotificationService/**"
-      - "nuget.config"
-      - ".github/workflows/ci-notification.yml"
+      - "DataIngestorService/**"
+      - ".github/workflows/ci-data-ingestor.yml"
       - ".github/workflows/reusable-dotnet-ci.yml"
   workflow_dispatch:
 
 concurrency:
-  group: ci-notification-${{ github.ref }}
+  group: ci-data-ingestor-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  notification:
+  data-ingestor:
     uses: ./.github/workflows/reusable-dotnet-ci.yml
     with:
-      working-directory: NotificationService
-      project-file: NotificationService/NotificationService.csproj
-      test-project: NotificationService.Tests/NotificationService.Tests.csproj
-      dockerfile: NotificationService/NotificationService/Dockerfile
-      image-name: notification-service
+      working-directory: DataIngestorService
+      project-file: DataIngestorService.sln
+      test-project: DataIngestorService.Tests/DataIngestorService.Tests.csproj
+      dockerfile: DataIngestorService/DataIngestorService/Dockerfile
+      image-name: data-ingestor-service
       dotnet-version: "10.0.x"
-      needs-nuget-auth: true
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
