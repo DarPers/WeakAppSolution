@@ -4,24 +4,28 @@ on:
   workflow_call:
     inputs:
       working-directory:
-        description: Root directory of the service (Docker build context)
+        description: Service directory used for relative project paths
         required: true
         type: string
       project-file:
-        description: Relative path to the main .csproj (from working-directory)
+        description: Path to .csproj or .sln relative to working-directory
         required: true
         type: string
       test-project:
-        description: Relative path to a test project (from working-directory). Empty = auto-discover.
+        description: Path to test project relative to working-directory (empty = auto-discover)
         required: false
         type: string
         default: ""
       dockerfile:
-        description: Relative path to Dockerfile (from working-directory)
+        description: Dockerfile path relative to repository root
         required: true
         type: string
       image-name:
         description: Docker image name (without tag)
+        required: true
+        type: string
+      sonar-project-key:
+        description: SonarQube project key
         required: true
         type: string
       dotnet-version:
@@ -29,60 +33,164 @@ on:
         required: false
         type: string
         default: "10.0.x"
+      needs-nuget-auth:
+        description: Whether restore needs GitHub Packages credentials
+        required: false
+        type: boolean
+        default: false
+      skip-tests:
+        description: Skip unit tests
+        required: false
+        type: boolean
+        default: false
+      skip-format:
+        description: Skip dotnet format verification
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      SONAR_TOKEN:
+        required: false
+      SONAR_HOST_URL:
+        required: false
+      SONAR_ORGANIZATION:
+        required: false
+      NUGET_TOKEN:
+        required: false
 
 jobs:
   ci:
-    name: Restore → Build → Test → Lint → Docker
+    name: Build · Test · Lint · Sonar · Docker
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
 
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      # nuget.config reads %GITHUB_TOKEN% for GitHub Packages
+      GITHUB_TOKEN: ${{ secrets.NUGET_TOKEN != '' && secrets.NUGET_TOKEN || github.token }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL != '' && secrets.SONAR_HOST_URL || 'https://sonarcloud.io' }}
+      SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
 
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles(format('{0}/**/*.csproj', inputs.working-directory)) }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Require NuGet token for private feeds
+        if: ${{ inputs.needs-nuget-auth }}
+        run: |
+          if [ -z "${GITHUB_TOKEN:-}" ]; then
+            echo "GITHUB_TOKEN / NUGET_TOKEN is required to restore private GitHub Packages." >&2
+            exit 1
+          fi
+        working-directory: .
+
+      - name: Install SonarScanner for .NET
+        if: ${{ env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' }}
+        run: dotnet tool install --global dotnet-sonarscanner
+        working-directory: .
+
+      - name: Begin SonarCloud analysis
+        id: sonar_begin
+        if: ${{ env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' }}
+        run: |
+          set -euo pipefail
+          dotnet sonarscanner begin \
+            "/k:${{ inputs.sonar-project-key }}" \
+            "/o:${SONAR_ORGANIZATION}" \
+            "/d:sonar.token=${SONAR_TOKEN}" \
+            "/d:sonar.host.url=${SONAR_HOST_URL}" \
+            "/d:sonar.cs.opencover.reportsPaths=${{ github.workspace }}/**/coverage.opencover.xml" \
+            "/d:sonar.coverage.exclusions=**/Program.cs,**/*Migrations*/**" \
+            "/d:sonar.exclusions=**/bin/**,**/obj/**,**/*.Tests/**"
+        working-directory: .
+
       - name: Restore
         run: dotnet restore "${{ inputs.project-file }}"
 
-      - name: Build
-        run: dotnet build "${{ inputs.project-file }}" --configuration Release --no-restore
+      - name: Build (static analyzers + code style)
+        run: |
+          dotnet build "${{ inputs.project-file }}" \
+            --configuration Release \
+            --no-restore \
+            /p:EnforceCodeStyleInBuild=true \
+            /p:RunAnalyzersDuringBuild=true
 
-      - name: Test
+      - name: Unit tests
+        if: ${{ !inputs.skip-tests }}
         run: |
           set -euo pipefail
+          COLLECT='XPlat Code Coverage;Format=opencover'
+          RESULTS="${{ github.workspace }}/TestResults"
+          mkdir -p "$RESULTS"
+
+          run_test() {
+            local proj="$1"
+            echo "Running tests: $proj"
+            dotnet test "$proj" \
+              --configuration Release \
+              --verbosity normal \
+              --collect:"$COLLECT" \
+              --results-directory "$RESULTS"
+          }
+
           if [ -n "${{ inputs.test-project }}" ]; then
-            echo "Running tests: ${{ inputs.test-project }}"
-            dotnet test "${{ inputs.test-project }}" --configuration Release --verbosity normal
+            run_test "${{ inputs.test-project }}"
           else
-            mapfile -t TEST_PROJECTS < <(find . -type f \( -name '*Tests*.csproj' -o -name '*Test*.csproj' \) | sort)
+            mapfile -t TEST_PROJECTS < <(find . -type f \( -name '*Tests.csproj' -o -name '*Test.csproj' \) | sort)
             if [ ${#TEST_PROJECTS[@]} -eq 0 ]; then
               echo "No test projects found under ${{ inputs.working-directory }}; skipping tests."
             else
               for proj in "${TEST_PROJECTS[@]}"; do
-                echo "Running tests: $proj"
-                dotnet test "$proj" --configuration Release --verbosity normal
+                run_test "$proj"
               done
             fi
           fi
 
-      - name: Lint
-        run: dotnet format "${{ inputs.project-file }}" --verify-no-changes --verbosity diagnostic
+      - name: Code style (dotnet format)
+        if: ${{ !inputs.skip-format }}
+        run: |
+          dotnet format "${{ inputs.project-file }}" \
+            --verify-no-changes \
+            --severity warn \
+            --verbosity diagnostic
+
+      - name: End SonarCloud analysis
+        if: ${{ always() && steps.sonar_begin.outcome == 'success' }}
+        run: dotnet sonarscanner end /d:sonar.token="${SONAR_TOKEN}"
+        working-directory: .
 
       - name: Set up Docker Buildx
+        if: ${{ success() }}
         uses: docker/setup-buildx-action@v3
 
       - name: Docker build
+        if: ${{ success() }}
         uses: docker/build-push-action@v6
         with:
-          context: ${{ inputs.working-directory }}
-          file: ${{ inputs.working-directory }}/${{ inputs.dockerfile }}
+          context: .
+          file: ${{ inputs.dockerfile }}
           push: false
           tags: ${{ inputs.image-name }}:ci-${{ github.sha }}
+          build-args: |
+            GITHUB_TOKEN=${{ env.GITHUB_TOKEN }}
           cache-from: type=gha
           cache-to: type=gha,mode=min

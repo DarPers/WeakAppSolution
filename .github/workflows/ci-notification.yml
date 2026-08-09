@@ -3,17 +3,23 @@ name: CI — Notification
 on:
   push:
     branches: [main]
+    paths:
+      - "NotificationService/**"
+      - "nuget.config"
+      - ".github/workflows/ci-notification.yml"
+      - ".github/workflows/reusable-dotnet-ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "NotificationService/**"
+      - "nuget.config"
       - ".github/workflows/ci-notification.yml"
       - ".github/workflows/reusable-dotnet-ci.yml"
   workflow_dispatch:
 
 concurrency:
   group: ci-notification-${{ github.ref }}
-  cancel-in-progress: true 
+  cancel-in-progress: true
 
 jobs:
   notification:
@@ -21,6 +27,14 @@ jobs:
     with:
       working-directory: NotificationService
       project-file: NotificationService/NotificationService.csproj
-      dockerfile: NotificationService/Dockerfile
+      test-project: NotificationService.Tests/NotificationService.Tests.csproj
+      dockerfile: NotificationService/NotificationService/Dockerfile
       image-name: notification-service
+      sonar-project-key: WeakAppSolution_NotificationService
       dotnet-version: "10.0.x"
+      needs-nuget-auth: true
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
+      NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
