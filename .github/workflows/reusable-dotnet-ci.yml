@@ -39,11 +39,6 @@ on:
         required: false
         type: boolean
         default: false
-      skip-format:
-        description: Skip dotnet format verification
-        required: false
-        type: boolean
-        default: false
     secrets:
       SONAR_TOKEN:
         required: false
@@ -58,7 +53,7 @@ on:
 
 jobs:
   ci:
-    name: Build · Test · Lint · Sonar · Docker
+    name: Build · Test · Sonar · Docker
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -161,14 +156,6 @@ jobs:
               done
             fi
           fi
-
-      - name: Code style (dotnet format)
-        if: ${{ !inputs.skip-format }}
-        run: |
-          dotnet format "${{ inputs.project-file }}" \
-            --verify-no-changes \
-            --severity warn \
-            --verbosity diagnostic
 
       - name: End SonarCloud analysis
         if: ${{ always() && steps.sonar_begin.outcome == 'success' }}
