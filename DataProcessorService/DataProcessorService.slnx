@@ -2,4 +2,5 @@
   <Folder Name="/Solution Items/" />
   <Project Path="DataProcessorService.DAL/DataProcessorService.DAL.csproj" Id="7dea47b5-856a-4ad9-9c72-2d9acc0c4022" />
   <Project Path="DataProcessorService/DataProcessorService.csproj" />
+  <Project Path="DataProcessorService.Tests/DataProcessorService.Tests.csproj" />
 </Solution>

@@ -9,14 +9,17 @@ WORKDIR /app
 # This stage is used to build the service project
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
+
+ARG GITHUB_TOKEN
+ENV GITHUB_TOKEN=$GITHUB_TOKEN
+
 WORKDIR /src
-COPY ["DataProcessorService/nuget.config", "DataProcessorService/"]
 COPY ["nuget.config", "."]
-COPY ["DataProcessorService/DataProcessorService.csproj", "DataProcessorService/"]
-COPY ["DataProcessorService.DAL/DataProcessorService.DAL.csproj", "DataProcessorService.DAL/"]
-RUN dotnet restore "./DataProcessorService/DataProcessorService.csproj"
+COPY ["DataProcessorService/DataProcessorService/DataProcessorService.csproj", "DataProcessorService/DataProcessorService/"]
+COPY ["DataProcessorService/DataProcessorService.DAL/DataProcessorService.DAL.csproj", "DataProcessorService/DataProcessorService.DAL/"]
+RUN dotnet restore "./DataProcessorService/DataProcessorService/DataProcessorService.csproj"
 COPY . .
-WORKDIR "/src/DataProcessorService"
+WORKDIR "/src/DataProcessorService/DataProcessorService"
 RUN dotnet build "./DataProcessorService.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage

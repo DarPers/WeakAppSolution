@@ -1,22 +1,18 @@
 ﻿using DataProcessorService;
 using DataProcessorService.DAL;
+using DataProcessorService.Logging;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Serilog;
 using Host = Microsoft.Extensions.Hosting.Host;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-var configuration = new ConfigurationBuilder()
-    .SetBasePath(AppContext.BaseDirectory)
-    .AddJsonFile("appsettings.json", optional: false)
-    .Build();
+builder.AddStructuredSerilogLogging();
 
-builder.Services.AddSingleton<IConfiguration>(configuration);
-
-builder.Services.ConfigureServices(configuration);
-builder.Services.ConfigureDALServices(configuration);
+builder.Services.ConfigureMessagingServices(builder.Configuration);
+builder.Services.ConfigureDALServices(builder.Configuration);
 
 var host = builder.Build();
 
@@ -26,4 +22,11 @@ using (var scope = host.Services.CreateScope())
     db.Database.Migrate();
 }
 
-await host.RunAsync();
+try
+{
+    host.Run();
+}
+finally
+{
+    Log.CloseAndFlush();
+}

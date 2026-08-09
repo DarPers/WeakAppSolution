@@ -2,7 +2,7 @@
 
 namespace DataProcessorService.ConfigurationOptions;
 
-public class RabbitMqOptions
+public sealed class RabbitMqOptions
 {
     public const string SectionName = "RabbitMQ";
 
@@ -20,4 +20,10 @@ public class RabbitMqOptions
 
     [Required, MinLength(1)]
     public required string QueueName { get; set; }
+
+    [Range(0, 30)]
+    public int ConsumeRetryCount { get; set; } = 3;
+
+    [Range(0, 300_000)]
+    public int ConsumeRetryDelayMilliseconds { get; set; } = 1000;
 }
