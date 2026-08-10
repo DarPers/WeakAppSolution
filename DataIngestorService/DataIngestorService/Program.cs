@@ -5,12 +5,15 @@ using DataIngestorService.ConfigurationOptions;
 using DataIngestorService.Logging;
 using DataIngestorService.MessagingService;
 using DataIngestorService.RetryPolicies;
+using DataIngestorService.Telemetry;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Refit;
 using Serilog;
-using Host = Microsoft.Extensions.Hosting.Host;
 
-var builder = Host.CreateApplicationBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 builder.AddStructuredSerilogLogging();
 
@@ -43,10 +46,24 @@ builder.Services
 
 builder.Services.AddMessageServices(configuration);
 
-var app = builder.Build();
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService("data-ingestor-service"))
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddMeter(ServiceTelemetry.MeterName)
+        .AddPrometheusExporter())
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddSource(ServiceTelemetry.ActivitySourceName));
 
 try
 {
+    var app = builder.Build();
+
+    app.MapPrometheusScrapingEndpoint();
     app.Run();
 }
 finally

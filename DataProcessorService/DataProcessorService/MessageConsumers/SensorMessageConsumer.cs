@@ -2,6 +2,7 @@
 using DataProcessorService.DAL.Interfaces;
 using DataProcessorService.Logging;
 using DataProcessorService.Mapping;
+using DataProcessorService.Telemetry;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 
@@ -18,11 +19,14 @@ public class SensorMessageConsumer(
             ?? context.ConversationId?.ToString("N")
             ?? context.MessageId?.ToString("N");
 
+        using var activity = ServiceTelemetry.ActivitySource.StartActivity("sensor.persist");
         using var scope = loggingContext.BeginScope(correlationId);
 
         var message = context.Message;
         var sensorEvents = SensorEventMapper.ToEntities(message);
         loggingContext.SetEventCount(sensorEvents.Count);
+        activity?.SetTag("sensor.event_count", sensorEvents.Count);
+        activity?.SetTag("messaging.correlation_id", correlationId);
 
         logger.LogInformation(
             "Persisting {EventCount} sensor events received at {ReceivedAt}",
@@ -32,9 +36,11 @@ public class SensorMessageConsumer(
         try
         {
             await sensorEventRepository.Create(sensorEvents);
+            ServiceTelemetry.EventsPersisted.Add(sensorEvents.Count);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            ServiceTelemetry.PersistErrors.Add(1);
             // Rethrow so MassTransit retries and eventually moves the message to the error queue.
             logger.LogError(
                 ex,

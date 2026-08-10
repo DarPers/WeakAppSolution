@@ -4,6 +4,10 @@ using NotificationService.Consumers;
 using NotificationService.Hubs;
 using NotificationService.Logging;
 using NotificationService.Options;
+using NotificationService.Telemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
 using CorsOptions = NotificationService.Options.CorsOptions;
 
@@ -56,6 +60,17 @@ builder.Services.AddMassTransit(config =>
 
 builder.Services.AddCors();
 
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService("notification-service"))
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddMeter(ServiceTelemetry.MeterName)
+        .AddPrometheusExporter())
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation()
+        .AddSource(ServiceTelemetry.ActivitySourceName));
+
 try
 {
     var app = builder.Build();
@@ -70,6 +85,7 @@ try
               .AllowCredentials();
     });
 
+    app.MapPrometheusScrapingEndpoint();
     app.MapHub<SensorEventsHub>("/hubs/sensors");
     app.Run();
 }
