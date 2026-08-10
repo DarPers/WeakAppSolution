@@ -6,6 +6,7 @@ using NotificationService.Hubs;
 using NotificationService.Mapping;
 using NotificationService.Options;
 using NotificationService.RetryPolicies;
+using NotificationService.Telemetry;
 
 namespace NotificationService.Consumers;
 
@@ -14,11 +15,14 @@ public class SensorMessageConsumer(
     IOptions<BroadcastOptions> broadcastOptions,
     ILogger<SensorMessageConsumer> logger) : IConsumer<SensorEventsMessage>
 {
-    public Task Consume(ConsumeContext<SensorEventsMessage> context)
+    public async Task Consume(ConsumeContext<SensorEventsMessage> context)
     {
         var notification = SensorNotificationMapper.ToNotification(context.Message);
         var opts = broadcastOptions.Value;
         var delay = TimeSpan.FromMilliseconds(opts.RetryDelayMilliseconds);
+
+        using var activity = ServiceTelemetry.ActivitySource.StartActivity("sensor.broadcast");
+        activity?.SetTag("sensor.event_count", notification.Events.Count);
 
         logger.LogInformation(
             "Broadcasting sensor notification with {EventCount} events received at {ReceivedAt}",
@@ -30,8 +34,18 @@ public class SensorMessageConsumer(
             delay,
             logger);
 
-        return policy.ExecuteAsync(
-            _ => sensorEventsHubContext.Clients.All.SensorDataUpdated(notification),
-            context.CancellationToken);
+        try
+        {
+            await policy.ExecuteAsync(
+                _ => sensorEventsHubContext.Clients.All.SensorDataUpdated(notification),
+                context.CancellationToken);
+
+            ServiceTelemetry.EventsBroadcast.Add(notification.Events.Count);
+        }
+        catch
+        {
+            ServiceTelemetry.BroadcastErrors.Add(1);
+            throw;
+        }
     }
 }
