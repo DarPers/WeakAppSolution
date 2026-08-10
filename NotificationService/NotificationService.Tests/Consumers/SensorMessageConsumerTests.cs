@@ -33,6 +33,7 @@ public class SensorMessageConsumerTests
     [Fact]
     public async Task Consume_MapsMessageAndBroadcastsTypedNotification()
     {
+        // Arrange
         var receivedAt = new DateTime(2026, 8, 6, 15, 30, 0, DateTimeKind.Utc);
         var payload = JsonDocument.Parse("""{"humidity":55}""").RootElement.Clone();
         var message = new SensorEventsMessage
@@ -50,8 +51,10 @@ public class SensorMessageConsumerTests
         };
         var context = CreateConsumeContext(message);
 
+        // Act
         await _sut.Consume(context.Object);
 
+        // Assert
         _clientProxyMock.Verify(
             x => x.SensorDataUpdated(It.Is<SensorNotificationDto>(n =>
                 n.ReceivedAt == receivedAt
@@ -86,6 +89,7 @@ public class SensorMessageConsumerTests
     [Fact]
     public async Task Consume_WhenBroadcastFails_RetriesConfiguredTimesThenRethrows()
     {
+        // Arrange
         var sut = CreateSut(retryCount: 2);
         var message = new SensorEventsMessage
         {
@@ -97,8 +101,10 @@ public class SensorMessageConsumerTests
             .Setup(x => x.SensorDataUpdated(It.IsAny<SensorNotificationDto>()))
             .ThrowsAsync(new HubException("broadcast failed"));
 
+        // Act
         var act = async () => await sut.Consume(context.Object);
 
+        // Assert
         await act.Should().ThrowAsync<HubException>();
         _clientProxyMock.Verify(
             x => x.SensorDataUpdated(It.IsAny<SensorNotificationDto>()),
@@ -108,6 +114,7 @@ public class SensorMessageConsumerTests
     [Fact]
     public async Task Consume_WhenCancelled_ThrowsOperationCanceledException()
     {
+        // Arrange
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -118,8 +125,10 @@ public class SensorMessageConsumerTests
         };
         var context = CreateConsumeContext(message, cts.Token);
 
+        // Act
         var act = async () => await _sut.Consume(context.Object);
 
+        // Assert
         await act.Should().ThrowAsync<OperationCanceledException>();
         _clientProxyMock.Verify(
             x => x.SensorDataUpdated(It.IsAny<SensorNotificationDto>()),

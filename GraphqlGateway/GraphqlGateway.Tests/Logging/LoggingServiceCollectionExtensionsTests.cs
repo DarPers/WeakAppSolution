@@ -13,6 +13,7 @@ public class LoggingServiceCollectionExtensionsTests
     [Fact]
     public void AddStructuredSerilogLogging_ConfiguresSerilogAndReturnsBuilder()
     {
+        // Arrange
         var builder = WebApplication.CreateBuilder();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -20,8 +21,10 @@ public class LoggingServiceCollectionExtensionsTests
             ["Serilog:WriteTo:0:Name"] = "Console"
         });
 
+        // Act
         var result = builder.AddStructuredSerilogLogging();
 
+        // Assert
         result.Should().BeSameAs(builder);
         Log.Logger.Should().NotBe(Serilog.Core.Logger.None);
 

@@ -32,6 +32,7 @@ public class SensorMessageConsumerTests
     [Fact]
     public async Task Consume_MapsMessageAndPersistsViaRepository()
     {
+        // Arrange
         var receivedAt = new DateTime(2026, 8, 6, 15, 30, 0, DateTimeKind.Utc);
         var payload = JsonDocument.Parse("""{"humidity":55}""").RootElement.Clone();
         var message = new SensorEventsMessage
@@ -49,8 +50,10 @@ public class SensorMessageConsumerTests
         };
         var context = CreateConsumeContext(message);
 
+        // Act
         await _sut.Consume(context.Object);
 
+        // Assert
         _repositoryMock.Verify(
             x => x.Create(It.Is<List<SensorEventEntity>>(events =>
                 events.Count == 1
@@ -65,6 +68,7 @@ public class SensorMessageConsumerTests
     [Fact]
     public async Task Consume_WhenRepositoryFails_Rethrows()
     {
+        // Arrange
         var message = new SensorEventsMessage
         {
             ReceivedAt = DateTime.UtcNow,
@@ -75,14 +79,17 @@ public class SensorMessageConsumerTests
             .Setup(x => x.Create(It.IsAny<List<SensorEventEntity>>()))
             .ThrowsAsync(new InvalidOperationException("db unavailable"));
 
+        // Act
         var act = async () => await _sut.Consume(context.Object);
 
+        // Assert
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("db unavailable");
     }
 
     [Fact]
     public async Task Consume_WhenCancelled_ThrowsOperationCanceledException()
     {
+        // Arrange
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
@@ -104,8 +111,10 @@ public class SensorMessageConsumerTests
             .Setup(x => x.Create(It.IsAny<List<SensorEventEntity>>()))
             .ThrowsAsync(new OperationCanceledException(cts.Token));
 
+        // Act
         var act = async () => await _sut.Consume(context.Object);
 
+        // Assert
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 

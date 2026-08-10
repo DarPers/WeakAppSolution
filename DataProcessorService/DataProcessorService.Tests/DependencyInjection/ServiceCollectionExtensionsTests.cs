@@ -16,14 +16,17 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public void AddStructuredSerilogLogging_RegistersContextAndEnricher()
     {
+        // Arrange
         var builder = Host.CreateApplicationBuilder();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Serilog:MinimumLevel:Default"] = "Information"
         });
 
+        // Act
         builder.AddStructuredSerilogLogging();
 
+        // Assert
         using var host = builder.Build();
         host.Services.GetService<ILoggingContextAccessor>().Should().NotBeNull();
         host.Services.GetServices<Serilog.Core.ILogEventEnricher>()
@@ -35,6 +38,7 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public void ConfigureDALServices_RegistersPostgresOptionsAndRepository()
     {
+        // Arrange
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -44,8 +48,11 @@ public class ServiceCollectionExtensionsTests
             .Build();
 
         var services = new ServiceCollection();
+
+        // Act
         services.ConfigureDALServices(configuration);
 
+        // Assert
         using var provider = services.BuildServiceProvider();
         var options = provider.GetRequiredService<IOptions<PostgresOptions>>().Value;
 
@@ -56,6 +63,7 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public void ConfigureMessagingServices_RegistersValidatedRabbitMqOptions()
     {
+        // Arrange
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -71,8 +79,11 @@ public class ServiceCollectionExtensionsTests
 
         var services = new ServiceCollection();
         services.AddLogging();
+
+        // Act
         services.ConfigureMessagingServices(configuration);
 
+        // Assert
         using var provider = services.BuildServiceProvider();
         var options = provider.GetRequiredService<IOptions<RabbitMqOptions>>().Value;
 

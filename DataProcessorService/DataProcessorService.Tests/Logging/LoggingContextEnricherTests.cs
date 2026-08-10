@@ -11,6 +11,7 @@ public class LoggingContextEnricherTests
     [Fact]
     public void Enrich_AddsCorrelationIdAndEventCountProperties()
     {
+        // Arrange
         var accessor = new LoggingContextAccessor();
         using var scope = accessor.BeginScope("abc123");
         accessor.SetEventCount(7);
@@ -24,8 +25,10 @@ public class LoggingContextEnricherTests
             template,
             properties: []);
 
+        // Act
         enricher.Enrich(logEvent, new ScalarPropertyFactory());
 
+        // Assert
         logEvent.Properties["correlation_id"].ToString().Should().Contain("abc123");
         logEvent.Properties["event_count"].ToString().Should().Contain("7");
     }

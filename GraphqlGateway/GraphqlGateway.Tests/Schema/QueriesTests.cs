@@ -26,12 +26,15 @@ public class QueriesTests : IDisposable
     [Fact]
     public void GetSensorEvents_ReturnsAllSeededEvents()
     {
+        // Arrange
         Seed(
             Event("temperature", "sensor-a"),
             Event("humidity", "sensor-b"));
 
+        // Act
         var events = _queries.GetSensorEvents(_dbContext).ToList();
 
+        // Assert
         events.Should().HaveCount(2);
         events.Select(e => e.Type).Should().BeEquivalentTo("temperature", "humidity");
     }
@@ -39,21 +42,26 @@ public class QueriesTests : IDisposable
     [Fact]
     public void GetSensorEvents_WhenEmpty_ReturnsEmptyQueryable()
     {
+        // Act
         var events = _queries.GetSensorEvents(_dbContext).ToList();
 
+        // Assert
         events.Should().BeEmpty();
     }
 
     [Fact]
     public void GetStatsByType_GroupsAndCountsByType()
     {
+        // Arrange
         Seed(
             Event("temperature", "sensor-a"),
             Event("temperature", "sensor-b"),
             Event("humidity", "sensor-c"));
 
+        // Act
         var stats = _queries.GetStatsByType(_dbContext).ToList();
 
+        // Assert
         stats.Should().BeEquivalentTo(
         [
             new Queries.TypeStats("temperature", 2),
@@ -64,21 +72,26 @@ public class QueriesTests : IDisposable
     [Fact]
     public void GetStatsByType_WhenEmpty_ReturnsEmpty()
     {
+        // Act
         var stats = _queries.GetStatsByType(_dbContext).ToList();
 
+        // Assert
         stats.Should().BeEmpty();
     }
 
     [Fact]
     public void GetStatsByLocation_GroupsAndCountsByName()
     {
+        // Arrange
         Seed(
             Event("temperature", "warehouse"),
             Event("humidity", "warehouse"),
             Event("temperature", "office"));
 
+        // Act
         var stats = _queries.GetStatsByLocation(_dbContext).ToList();
 
+        // Assert
         stats.Should().BeEquivalentTo(
         [
             new Queries.TypeStats("warehouse", 2),
@@ -89,8 +102,10 @@ public class QueriesTests : IDisposable
     [Fact]
     public void GetStatsByLocation_WhenEmpty_ReturnsEmpty()
     {
+        // Act
         var stats = _queries.GetStatsByLocation(_dbContext).ToList();
 
+        // Assert
         stats.Should().BeEmpty();
     }
 
