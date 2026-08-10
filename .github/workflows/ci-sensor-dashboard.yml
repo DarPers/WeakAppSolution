@@ -1,0 +1,84 @@
+name: CI — Sensor Dashboard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sensor-dashboard-client/**"
+      - ".github/workflows/ci-sensor-dashboard.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "sensor-dashboard-client/**"
+      - ".github/workflows/ci-sensor-dashboard.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-sensor-dashboard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sensor-dashboard:
+    name: Lint · Test · Build · Sonar · Docker
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sensor-dashboard-client
+
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL != '' && secrets.SONAR_HOST_URL || 'https://sonarcloud.io' }}
+      SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
+      SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY != '' && secrets.SONAR_PROJECT_KEY || 'WeakAppSolution' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: sensor-dashboard-client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test --if-present
+
+      - name: Build
+        run: npm run build
+
+      - name: SonarCloud Scan
+        if: ${{ env.SONAR_TOKEN != '' && env.SONAR_ORGANIZATION != '' }}
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
+        with:
+          projectBaseDir: sensor-dashboard-client
+          args: >
+            -Dsonar.organization=${{ env.SONAR_ORGANIZATION }}
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+            -Dsonar.sources=src
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/**
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker build
+        uses: docker/build-push-action@v6
+        with:
+          context: sensor-dashboard-client
+          file: sensor-dashboard-client/Dockerfile
+          push: false
+          tags: sensor-dashboard-client:ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
