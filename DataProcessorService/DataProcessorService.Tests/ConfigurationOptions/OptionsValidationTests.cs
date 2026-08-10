@@ -10,6 +10,7 @@ public class OptionsValidationTests
     [Fact]
     public void RabbitMqOptions_WhenValid_PassesValidation()
     {
+        // Arrange
         var options = new RabbitMqOptions
         {
             HostName = "rabbitmq",
@@ -21,12 +22,17 @@ public class OptionsValidationTests
             ConsumeRetryDelayMilliseconds = 1000
         };
 
-        Validate(options).Should().BeEmpty();
+        // Act
+        var results = Validate(options);
+
+        // Assert
+        results.Should().BeEmpty();
     }
 
     [Fact]
     public void RabbitMqOptions_WhenPasswordMissing_FailsValidation()
     {
+        // Arrange
         var options = new RabbitMqOptions
         {
             HostName = "rabbitmq",
@@ -36,12 +42,17 @@ public class OptionsValidationTests
             QueueName = "processor-sensor-events"
         };
 
-        Validate(options).Should().Contain(r => r.MemberNames.Contains(nameof(RabbitMqOptions.Password)));
+        // Act
+        var results = Validate(options);
+
+        // Assert
+        results.Should().Contain(r => r.MemberNames.Contains(nameof(RabbitMqOptions.Password)));
     }
 
     [Fact]
     public void RabbitMqOptions_WhenRetryCountOutOfRange_FailsValidation()
     {
+        // Arrange
         var options = new RabbitMqOptions
         {
             HostName = "rabbitmq",
@@ -52,29 +63,43 @@ public class OptionsValidationTests
             ConsumeRetryCount = 31
         };
 
-        Validate(options).Should().Contain(r => r.MemberNames.Contains(nameof(RabbitMqOptions.ConsumeRetryCount)));
+        // Act
+        var results = Validate(options);
+
+        // Assert
+        results.Should().Contain(r => r.MemberNames.Contains(nameof(RabbitMqOptions.ConsumeRetryCount)));
     }
 
     [Fact]
     public void PostgresOptions_WhenValid_PassesValidation()
     {
+        // Arrange
         var options = new PostgresOptions
         {
             PostgresSQLConnectionString = "Host=postgres;Database=db;Username=postgres"
         };
 
-        Validate(options).Should().BeEmpty();
+        // Act
+        var results = Validate(options);
+
+        // Assert
+        results.Should().BeEmpty();
     }
 
     [Fact]
     public void PostgresOptions_WhenConnectionStringMissing_FailsValidation()
     {
+        // Arrange
         var options = new PostgresOptions
         {
             PostgresSQLConnectionString = ""
         };
 
-        Validate(options)
+        // Act
+        var results = Validate(options);
+
+        // Assert
+        results
             .Should()
             .Contain(r => r.MemberNames.Contains(nameof(PostgresOptions.PostgresSQLConnectionString)));
     }

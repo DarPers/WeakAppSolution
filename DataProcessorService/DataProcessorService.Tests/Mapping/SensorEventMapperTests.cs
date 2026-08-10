@@ -10,6 +10,7 @@ public class SensorEventMapperTests
     [Fact]
     public void ToEntities_MapsMessageFieldsToEntities()
     {
+        // Arrange
         var receivedAt = new DateTime(2026, 8, 6, 12, 0, 0, DateTimeKind.Utc);
         var payload = JsonDocument.Parse("""{"value":42}""").RootElement.Clone();
         var message = new SensorEventsMessage
@@ -26,8 +27,10 @@ public class SensorEventMapperTests
             ]
         };
 
+        // Act
         var entities = SensorEventMapper.ToEntities(message);
 
+        // Assert
         entities.Should().HaveCount(1);
         entities[0].Id.Should().NotBe(Guid.Empty);
         entities[0].Type.Should().Be("temperature");
@@ -39,42 +42,51 @@ public class SensorEventMapperTests
     [Fact]
     public void ToEntities_WhenMessageIsNull_ThrowsArgumentNullException()
     {
+        // Act
         var act = () => SensorEventMapper.ToEntities(null!);
 
+        // Assert
         act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
     public void ToEntities_WhenSensorEventsIsNull_ThrowsArgumentNullException()
     {
+        // Arrange
         var message = new SensorEventsMessage
         {
             ReceivedAt = DateTime.UtcNow,
             SensorEvents = null!
         };
 
+        // Act
         var act = () => SensorEventMapper.ToEntities(message);
 
+        // Assert
         act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]
     public void ToEntities_WhenSensorEventsEmpty_ReturnsEmptyList()
     {
+        // Arrange
         var message = new SensorEventsMessage
         {
             ReceivedAt = DateTime.UtcNow,
             SensorEvents = []
         };
 
+        // Act
         var entities = SensorEventMapper.ToEntities(message);
 
+        // Assert
         entities.Should().BeEmpty();
     }
 
     [Fact]
     public void ToEntities_AssignsDistinctIdsPerEvent()
     {
+        // Arrange
         var payload = JsonDocument.Parse("{}").RootElement.Clone();
         var message = new SensorEventsMessage
         {
@@ -86,8 +98,10 @@ public class SensorEventMapperTests
             ]
         };
 
+        // Act
         var entities = SensorEventMapper.ToEntities(message);
 
+        // Assert
         entities.Select(e => e.Id).Should().OnlyHaveUniqueItems();
     }
 }
