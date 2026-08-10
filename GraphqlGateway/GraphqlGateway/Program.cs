@@ -22,7 +22,13 @@ builder.Services
     .AddQueryType<GraphqlGateway.Schema.Queries>()
     .AddFiltering()
     .AddSorting()
-    .AddProjections();
+    .AddProjections()
+    // Paged sensor queries exceed HotChocolate's default MaxFieldCost (1000).
+    .ModifyCostOptions(options =>
+    {
+        options.MaxFieldCost = 5_000;
+        options.MaxTypeCost = 5_000;
+    });
 
 builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics => metrics
